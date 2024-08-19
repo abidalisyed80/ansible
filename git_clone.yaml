@@ -1,0 +1,27 @@
+---
+- name: Clone specific branch from Git
+  hosts: localhost
+  vars:
+    git_repo_url: "{{ repo_url }}"
+    git_branch: "{{ branch_name }}"
+    dest_folder: "{{ dest_folder }}"
+
+  tasks:
+    - name: Remove existing destination folder
+      ansible.builtin.file:
+        path: "{{ dest_folder }}"
+        state: absent
+
+    - name: Clone the specific branch with depth 1
+      ansible.builtin.git:
+        repo: "{{ git_repo_url }}"
+        dest: "{{ dest_folder }}"
+        version: "{{ git_branch }}"
+        depth: 1
+        force: yes
+
+    - name: Save the commit ID to a file
+      ansible.builtin.shell: |
+        git rev-parse HEAD | head -c 10 > "{{ dest_folder }}/"../commit_id.txt
+      args:
+        chdir: "{{ dest_folder }}" 

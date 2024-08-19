@@ -1,0 +1,44 @@
+---
+- name: Build and Push Docker Image
+  hosts: localhost
+  any_errors_fatal: true
+  vars:
+#we are using git commit ID as the docker_image tag. 
+#Commit id is saved in 'commit_id_txt' file outside code directory
+    commit_id: "{{ lookup('file', '{{ dest_folder }}/../commit_id.txt') | trim }}"
+    docker_registry: "{{ docker_registry }}"
+    image_name: "{{ image_name }}"
+    dockerfile_path: "{{ dest_folder }}" 
+    dest_folder: "{{ dest_folder }}"  # Same as in the Git Clone playbook
+
+  tasks:
+    - name: Log in to Docker registry
+      ansible.builtin.command: 
+        cmd: >
+          docker login {{ docker_registry }}
+#        args:
+#          # Pass `--username` and `--password` in the command if needed
+
+    - name: Build the Docker image
+      ansible.builtin.command:
+        cmd: >
+          docker build --no-cache -t {{ docker_registry }}/{{ image_name }}:{{ commit_id }} .
+          #docker build --progress=plain --no-cache -t {{ docker_registry }}/{{ image_name }}:{{ commit_id }} .
+        chdir: "{{ dest_folder }}"
+      register: docker_build_output
+      ignore_errors: yes
+
+    - name: Push the Docker image to the registry
+      ansible.builtin.command: 
+        cmd: >
+          docker push {{ docker_registry }}/{{ image_name }}:{{ commit_id }}
+
+    - name: Clear Build cache
+      ansible.builtin.command: 
+        cmd: >
+          docker builder prune  -f
+
+    - name: Show Docker build output
+      ansible.builtin.debug:
+        var: docker_build_output.stdout_lines
+
